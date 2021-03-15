@@ -19,7 +19,6 @@ from libs.model import *
 from libs.metrics import *
 from libs.pre_processing import *
 from libs.visual_analysis import *
-az.style.use('arviz-darkgrid')
 warnings.filterwarnings('ignore')
 import theano
 theano.config.compute_test_value='raise'
