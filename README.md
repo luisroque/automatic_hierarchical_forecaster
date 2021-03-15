@@ -13,13 +13,11 @@ Note that the key dependency of automatic_hierarchical_forecaster is **PyMc3** a
 ## Tourism example
 Predicting the Australia tourism timeseries:
 ```python
-import warnings
 import pandas as pd
 from libs.model import *
 from libs.metrics import *
 from libs.pre_processing import *
 from libs.visual_analysis import *
-warnings.filterwarnings('ignore')
 import theano
 theano.config.compute_test_value='raise'
 
