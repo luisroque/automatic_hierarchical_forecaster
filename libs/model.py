@@ -78,25 +78,35 @@ class OutPiecewiseLinearChangepoints():
                  b,
                  a,
                  changepoints,
-                 groups):
+                 groups,
+                 minibatch,
+                 n_series,
+                 predict=False):
         self.a = a
         self.k = k
         self.m = m
         self.b = b
         self.g = groups
         self.changepoints = changepoints
+        self.minibatch = minibatch
+        self.n_series = n_series.shape[0]
+        self.predict = predict
 
     def create_changepoints(self, X, changepoints):
         return (0.5 * (1.0 + tt.sgn(tt.tile(X.reshape((-1,1)), (1,len(changepoints))) - changepoints)))
 
     def build(self, X):
-        size_r = X.shape[0]
 
-        X = theano.shared(X)
+        if not self.minibatch or self.predict:
+            # with minibatch, X is already a theano variable
+            X = theano.shared(X)
+
+        if self.predict:
+            self.n_series = self.g['predict']['s']
             
         A = self.create_changepoints(X, self.changepoints)
 
-        piecewise = (self.k.reshape((1, -1)) + tt.dot(A, self.b))*tt.tile(X, (1, self.g['train']['s'])) + (self.m.reshape((1,-1)) + tt.dot(A, (-self.changepoints.reshape((-1,1)) * self.b)))
+        piecewise = (self.k.reshape((1, -1)) + tt.dot(A, self.b))*tt.tile(X, (1, self.n_series)) + (self.m.reshape((1,-1)) + tt.dot(A, (-self.changepoints.reshape((-1,1)) * self.b)))
         
         return piecewise + self.a
 
@@ -164,7 +174,7 @@ class HGPforecaster:
         self.piecewise_out = piecewise_out
 
         self.kernel_lin_mean = kernel_lin_mean
-        self.partial_pool_mean = partial_pool
+        self.partial_pool_mean = partial_pool_mean
 
         if changepoints:
             self.changepoints = np.linspace(0, self.g['train']['n'], changepoints+2)[1:-1]
@@ -177,6 +187,7 @@ class HGPforecaster:
             self.levels = list(self.g['train']['groups_names'].keys())
 
         self.minibatch = minibatch
+        self.series = None
 
         # transform the data to matrix form
         self.g = generate_groups_data_matrix(self.g)
@@ -211,51 +222,63 @@ class HGPforecaster:
             if self.piecewise_out:
                 # Normal likelihood
                 if self.partial_pool_mean:
-                    # priors for the group effects
-                    # we want a partial pooling effect, so reduce the sd of the several parameters,
-                    # while defining a wider hyperparameter
+                    for group in self.levels:
+                        # priors for the group effects
+                        # we want a partial pooling effect, so reduce the sd of the several parameters,
+                        # while defining a wider hyperparameter
 
-                    # Hyperprior for the mean
-                    self.priors["mu_b_%s" %group] = pm.Normal(
-                        "mu_b_%s" %group, 
-                        mu=0.0, 
-                        sd=0.01)
-                    self.priors["mu_k_%s" %group] = pm.Normal(
-                        'mu_k_%s' %group, 
-                        0.0,
-                        0.01)
-                    self.priors["mu_m_%s" %group] = pm.Normal(
-                        'mu_m_%s' %group, 
-                        0.0,
-                        0.01) 
-                    
-                    # Hyperprior for the std
-                    self.priors["sd_b_%s" %group] = pm.HalfNormal(
-                        "sd_b_%s" %group, 
-                        sd=0.01)
-                    self.priors["sd_k_%s" %group] = pm.HalfNormal(
-                        'sd_k_%s' %group, 
-                        0.01)
-                    self.priors["sd_m_%s" %group] = pm.HalfNormal(
-                        'sd_m_%s' %group, 
-                        0.01)    
+                        # Hyperprior for the mean
+                        self.priors["mu_b_%s" %group] = pm.Normal(
+                            "mu_b_%s" %group, 
+                            mu=0.0, 
+                            sd=0.01)
+                        self.priors["mu_k_%s" %group] = pm.Normal(
+                            'mu_k_%s' %group, 
+                            0.0,
+                            0.01)
+                        self.priors["mu_m_%s" %group] = pm.Normal(
+                            'mu_m_%s' %group, 
+                            0.0,
+                            0.01)
+                        self.priors["mu_a_%s" %group] = pm.Normal(
+                            'mu_a_%s' %group, 
+                            0.0,
+                            0.1)                          
+                        # Hyperprior for the std
+                        self.priors["sd_b_%s" %group] = pm.HalfNormal(
+                            "sd_b_%s" %group, 
+                            sd=0.01)
+                        self.priors["sd_k_%s" %group] = pm.HalfNormal(
+                            'sd_k_%s' %group, 
+                            0.01)
+                        self.priors["sd_m_%s" %group] = pm.HalfNormal(
+                            'sd_m_%s' %group, 
+                            0.01)
+                        self.priors["sd_a_%s" %group] = pm.HalfNormal(
+                            'sd_a_%s' %group, 
+                            0.01)                                   
 
-                    # Partially pooled parameters
-                    self.priors["b_%s" %group] = pm.Normal(
-                        "b_%s" %group, 
-                        self.priors["mu_b_%s" %group], 
-                        self.priors["sd_b_%s" %group],
-                        shape=(self.changepoints.shape[0], self.g['train']['groups_n'][group]))
-                    self.priors["k_%s" %group] = pm.Normal(
-                        "k_%s" %group, 
-                        self.priors["mu_k_%s" %group], 
-                        self.priors["sd_k_%s" %group],
-                        shape=self.g['train']['groups_n'][group])
-                    self.priors["m_%s" %group] = pm.Normal(
-                        "m_%s" %group, 
-                        self.priors["mu_m_%s" %group], 
-                        self.priors["sd_m_%s" %group],
-                        shape=self.g['train']['groups_n'][group])
+                        # Partially pooled parameters
+                        self.priors["b_%s" %group] = pm.Normal(
+                            "b_%s" %group, 
+                            self.priors["mu_b_%s" %group], 
+                            self.priors["sd_b_%s" %group],
+                            shape=(self.changepoints.shape[0], self.g['train']['groups_n'][group]))
+                        self.priors["k_%s" %group] = pm.Normal(
+                            "k_%s" %group, 
+                            self.priors["mu_k_%s" %group], 
+                            self.priors["sd_k_%s" %group],
+                            shape=self.g['train']['groups_n'][group])
+                        self.priors["m_%s" %group] = pm.Normal(
+                            "m_%s" %group, 
+                            self.priors["mu_m_%s" %group], 
+                            self.priors["sd_m_%s" %group],
+                            shape=self.g['train']['groups_n'][group])
+                        self.priors["a_%s" %group] = pm.Normal(
+                            "a_%s" %group, 
+                            self.priors["mu_a_%s" %group], 
+                            self.priors["sd_a_%s" %group],
+                            shape=self.g['train']['groups_n'][group])
                 else:
                     self.priors["k"] = pm.Normal(
                         'k',
@@ -463,6 +486,26 @@ class HGPforecaster:
         if self.minibatch:
             # Using minibatch
             with self.model:
+                if self.piecewise_out:
+                    # normal likelihood with a piecewise function summed
+                    piece_={}
+                    for group in self.levels:
+                        piece_[group] = OutPiecewiseLinearChangepoints(k = self.priors["k_%s" %group][self.g['train']['groups_idx'][group]],
+                                                        m = self.priors["m_%s" %group][self.g['train']['groups_idx'][group]],
+                                                        b = self.priors['b_%s' %group][:,self.g['train']['groups_idx'][group]],
+                                                        a = self.priors["a_%s" %group][self.g['train']['groups_idx'][group]],
+                                                        changepoints = self.changepoints,
+                                                        groups = self.g,
+                                                        minibatch = self.minibatch,
+                                                        n_series = self.series).build(self.X_mi)
+                    
+                    piece = sum(piece_.values())
+                    self.y_pred = pm.Normal('y_pred', 
+                        mu=self.f + piece, 
+                        sd=self.priors['sigma'][self.series].reshape((1,-1)),
+                        observed=self.g['train']['data'],
+                        total_size=(self.g['train']['n'],self.g['train']['s']))
+                else:
                     # defining a normal likelihood with minibatch
                     self.y_pred = pm.Normal('y_pred', 
                                 mu=self.f,
@@ -482,7 +525,9 @@ class HGPforecaster:
                                                         b = self.priors['b_%s' %group][:,self.g['train']['groups_idx'][group]],
                                                         a = self.priors["a_%s" %group][self.g['train']['groups_idx'][group]],
                                                         changepoints = self.changepoints,
-                                                        groups = self.g).build(self.X)
+                                                        groups = self.g,
+                                                        minibatch = self.minibatch,
+                                                        n_series = self.series).build(self.X)
                     
                     piece = sum(piece_.values())
                     self.y_pred = pm.Normal('y_pred', 
@@ -515,7 +560,9 @@ class HGPforecaster:
                                                     b = self.priors['b_%s' %group][:,self.g['train']['groups_idx'][group]],
                                                     a = self.priors["a_%s" %group][self.g['train']['groups_idx'][group]],
                                                     changepoints = self.changepoints,
-                                                    groups = self.g).build(self.X)
+                                                    groups = self.g,
+                                                    minibatch = self.minibatch,
+                                                    n_series = self.series).build(self.X)
 
                 piece = sum(piece_.values())
                 self.prior_like = pm.Normal('prior_like', 
@@ -562,8 +609,7 @@ class HGPforecaster:
         if not self.minibatch:
             # with minibatch there is no possibility to recover the fitted values
             # backtransform the sampling of the fit for the original scale
-            if self.likelihood == 'normal':
-                self.pred_samples_fit = self.dt.inv_transf_train_general(self.pred_samples_fit['y_pred'])
+            self.pred_samples_fit = self.dt.inv_transf_train_general(self.pred_samples_fit['y_pred'])
 
 
     def predict(self):
@@ -586,12 +632,15 @@ class HGPforecaster:
             if self.piecewise_out:
                 piece_={}
                 for group in self.levels:
-                    piece_[group] = OutPiecewiseLinearChangepoints(k = self.priors["k_%s" %group][self.g['train']['groups_idx'][group]],
-                                                    m = self.priors["m_%s" %group][self.g['train']['groups_idx'][group]],
-                                                    b = self.priors['b_%s' %group][:,self.g['train']['groups_idx'][group]],
-                                                    a = self.priors["a_%s" %group][self.g['train']['groups_idx'][group]],
+                    piece_[group] = OutPiecewiseLinearChangepoints(k = self.priors["k_%s" %group][self.g['predict']['groups_idx'][group]],
+                                                    m = self.priors["m_%s" %group][self.g['predict']['groups_idx'][group]],
+                                                    b = self.priors['b_%s' %group][:,self.g['predict']['groups_idx'][group]],
+                                                    a = self.priors["a_%s" %group][self.g['predict']['groups_idx'][group]],
                                                     changepoints = self.changepoints,
-                                                    groups = self.g).build(X_new)
+                                                    groups = self.g,
+                                                    minibatch = self.minibatch,
+                                                    n_series = self.series,
+                                                    predict=True).build(X_new)
 
                 piece = sum(piece_.values())
                 y_pred_new = pm.Normal("y_pred_new", 
