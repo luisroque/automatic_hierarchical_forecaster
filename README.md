@@ -1,7 +1,7 @@
 # automatic_hierarchical_forecaster
-Automatic Hierarchical Time Series Forecasting using GPs
+Automatic Hierarchical Time Series Forecasting using Gaussian Processes
 
-Note that the key dependency of pm-prophet is **PyMc3** a library that depends on **Theano**.
+Note that the key dependency of automatic_hierarchical_forecaster is **PyMc3** a library that depends on **Theano**.
 
 ## Key Features
 * Hierarchical forecasting
