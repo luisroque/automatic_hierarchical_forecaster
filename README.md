@@ -11,7 +11,7 @@ Note that the key dependency of pm-prophet is **PyMc3** a library that depends o
 * Fitting with AVDI (possibility to define minibatches)
 
 ## Tourism example
-Predicting the Peyton Manning timeseries:
+Predicting the Australia tourism timeseries:
 ```python
 import warnings
 import pandas as pd
