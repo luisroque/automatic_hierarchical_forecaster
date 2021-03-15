@@ -63,3 +63,5 @@ visualize_predict(groups, m.pred_samples_predict, 8)
 results = calculate_metrics(m.pred_samples_predict, groups)
 metrics_to_table(results)
 ```
+
+![Predictions](https://raw.githubusercontent.com/luisroque/automatic_hierarchical_forecaster/main/example_notebooks/images/visualize_predictions.png)
