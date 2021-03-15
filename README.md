@@ -64,4 +64,4 @@ results = calculate_metrics(m.pred_samples_predict, groups)
 metrics_to_table(results)
 ```
 
-![Predictions](https://raw.githubusercontent.com/luisroque/automatic_hierarchical_forecaster/main/example_notebooks/images/visualize_predictions.png)
+![Predictions](https://raw.githubusercontent.com/luisroque/automatic_hierarchical_forecaster/main/example_notebooks/images/visualize_predict.png)
