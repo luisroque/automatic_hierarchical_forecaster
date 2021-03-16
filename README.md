@@ -1,7 +1,7 @@
 # automatic_hierarchical_forecaster
-Automatic Hierarchical Time Series Forecasting using GPs
+Automatic Hierarchical Time Series Forecasting using Gaussian Processes
 
-Note that the key dependency of pm-prophet is **PyMc3** a library that depends on **Theano**.
+Note that the key dependency of automatic_hierarchical_forecaster is **PyMc3** a library that depends on **Theano**.
 
 ## Key Features
 * Hierarchical forecasting
@@ -13,14 +13,11 @@ Note that the key dependency of pm-prophet is **PyMc3** a library that depends o
 ## Tourism example
 Predicting the Australia tourism timeseries:
 ```python
-import warnings
 import pandas as pd
 from libs.model import *
 from libs.metrics import *
 from libs.pre_processing import *
 from libs.visual_analysis import *
-az.style.use('arviz-darkgrid')
-warnings.filterwarnings('ignore')
 import theano
 theano.config.compute_test_value='raise'
 
@@ -63,3 +60,5 @@ visualize_predict(groups, m.pred_samples_predict, 8)
 results = calculate_metrics(m.pred_samples_predict, groups)
 metrics_to_table(results)
 ```
+
+![Predictions](https://raw.githubusercontent.com/luisroque/automatic_hierarchical_forecaster/main/example_notebooks/images/visualize_predict.png)
