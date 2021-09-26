@@ -7,7 +7,7 @@ import json
 
 # Tourism dataset
 
-data = pd.read_csv('/data/TourismData_v3.csv')
+data = pd.read_csv('data/TourismData_v3.csv')
 data['Year'] = data['Year'].fillna(method='ffill')
 
 d = dict((v,k) for k,v in enumerate(calendar.month_name))
