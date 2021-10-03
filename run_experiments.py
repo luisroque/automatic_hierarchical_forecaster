@@ -1,6 +1,6 @@
 import pandas as pd
 from libs.model_minibatch_series import HGPforecaster, PiecewiseLinearChangepoints
-from libs.metrics import calculate_metrics, metrics_to_table
+from libs.metrics import calculate_metrics
 from libs.pre_processing import generate_groups_data_flat, generate_groups_data_matrix
 from libs.visual_analysis import visualize_fit, visualize_predict, visualize_prior
 import json
@@ -31,9 +31,9 @@ m = HGPforecaster(groups_data=groups,
                   changepoints = 4)
 
 m.fit_vi()
-print('Fitting Model...')
 m.predict()
-print('Predicting...')
+
+results = calculate_metrics(m.pred_samples_predict, groups)
 
 dictionary_data = results
 a_file = open("restults.json", "w")
