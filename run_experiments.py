@@ -1,14 +1,18 @@
+import warnings
 import pandas as pd
-from libs.model_minibatch_series import HGPforecaster, PiecewiseLinearChangepoints
+import arviz as az
+import calendar
 from libs.metrics import calculate_metrics
 from libs.pre_processing import generate_groups_data_flat, generate_groups_data_matrix
-from libs.visual_analysis import visualize_fit, visualize_predict, visualize_prior
+from libs.visual_analysis import visualize_fit, visualize_predict, traceplot, visualize_prior, model_graph, plot_elbo
+from libs.model_minibatch_series import HGPforecaster, PiecewiseLinearChangepoints
+import theano
 import json
-import calendar
+theano.config.compute_test_value='raise'
 
-# Tourism dataset
+# Outside Piecewise Linear
 
-data = pd.read_csv('data/TourismData_v3.csv')
+data = pd.read_csv('./data/TourismData_v3.csv')
 data['Year'] = data['Year'].fillna(method='ffill')
 
 d = dict((v,k) for k,v in enumerate(calendar.month_name))
@@ -24,13 +28,18 @@ groups_input = {
     'purpose': [3,6]
 }
 
-groups = generate_groups_data_flat(data, groups_input, seasonality=12, h=24)
+groups = generate_groups_data_flat(y = data, 
+                               groups_input = groups_input, 
+                               seasonality=12, 
+                               h=24)
 
 m = HGPforecaster(groups_data=groups,
                   n_iterations=100000,
+                  piecewise_out=True,
                   changepoints = 4)
 
 m.fit_vi()
+
 m.predict()
 
 results = calculate_metrics(m.pred_samples_predict, groups)
