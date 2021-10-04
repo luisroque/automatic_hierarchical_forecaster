@@ -1,3 +1,9 @@
+import os
+# one of
+os.environ['MKL_NUM_THREADS'] = '8'
+os.environ['OMP_NUM_THREADS'] = '8'
+os.environ['GOTO_NUM_THREADS'] = '8'
+
 import warnings
 import pandas as pd
 import arviz as az
