@@ -1,20 +1,18 @@
+import os
+# one of
+os.environ['MKL_NUM_THREADS'] = '8'
+os.environ['OMP_NUM_THREADS'] = '8'
+os.environ['GOTO_NUM_THREADS'] = '8'
+
 import warnings
 import pandas as pd
 import arviz as az
 
-import os, sys
-dir2 = os.path.abspath('')
-dir1 = os.path.dirname(dir2)
-if not dir1 in sys.path: sys.path.append(dir1)
 import calendar
-from libs.metrics import calculate_metrics, metrics_to_table, metrics_to_latex
+from libs.metrics import calculate_metrics
 from libs.pre_processing import generate_groups_data_flat, generate_groups_data_matrix
-from libs.visual_analysis import visualize_fit, visualize_predict, traceplot, visualize_prior, model_graph, plot_elbo
 from libs.model_minibatch_series import HGPforecaster, PiecewiseLinearChangepoints
 import numpy as np
-az.style.use('arviz-darkgrid')
-warnings.filterwarnings('ignore')
-
 import theano
 theano.config.compute_test_value='raise'
 
@@ -77,3 +75,8 @@ m.fit_vi()
 m.predict()
 
 results = calculate_metrics(m.pred_samples_predict, groups)
+
+dictionary_data = results
+a_file = open("results_m5.json", "w")
+json.dump(dictionary_data, a_file)
+
