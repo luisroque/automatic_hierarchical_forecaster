@@ -17,7 +17,7 @@ import theano
 theano.config.compute_test_value='raise'
 
 # Read in the data
-INPUT_DIR = '../benchmark/m5-data'
+INPUT_DIR = './data/m5-data'
 cal = pd.read_csv(f'{INPUT_DIR}/calendar.csv')
 stv = pd.read_csv(f'{INPUT_DIR}/sales_train_validation.csv')
 ss = pd.read_csv(f'{INPUT_DIR}/sample_submission.csv')
